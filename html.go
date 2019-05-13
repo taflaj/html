@@ -28,11 +28,11 @@ func Find(page io.Reader, tag string, constraints *Constraints) []Tag {
 	tokenizer := html.NewTokenizer(page)
 	for looping := true; looping == true; {
 		token := tokenizer.Next()
-		switch {
-		case token == html.ErrorToken:
+		switch token {
+		case html.ErrorToken:
 			// end of document
 			looping = false
-		case token == html.StartTagToken:
+		case html.StartTagToken, html.SelfClosingTagToken:
 			// is this the tag we want?
 			if t := tokenizer.Token(); t.Data == tag {
 				// capture all attributes
