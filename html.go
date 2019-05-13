@@ -15,8 +15,8 @@ type Attributes map[string]string
 
 // Tag is a structure representing tags and all attributes.
 type Tag struct {
-	tag        string
-	attributes Attributes
+	Tag        string
+	Attributes Attributes
 }
 
 // Constraints is a series of specific attributes we're looking for inside a tag.
