@@ -17,43 +17,51 @@ type Attributes map[string]string
 type Tag struct {
 	Tag        string
 	Attributes Attributes
+	Node       *html.Node
 }
 
 // Constraints is a series of specific attributes we're looking for inside a tag.
 type Constraints map[string]*regexp.Regexp
 
-// Find all tags on the given page subject to the constraints.
-func Find(page io.Reader, tag string, constraints *Constraints) []Tag {
-	result := []Tag{}
-	tokenizer := html.NewTokenizer(page)
-	for looping := true; looping == true; {
-		token := tokenizer.Next()
-		switch token {
-		case html.ErrorToken:
-			// end of document
-			looping = false
-		case html.StartTagToken, html.SelfClosingTagToken:
-			// is this the tag we want?
-			if t := tokenizer.Token(); t.Data == tag {
-				// capture all attributes
-				attr := make(Attributes)
-				for _, a := range t.Attr {
-					attr[a.Key] = a.Val
-				}
-				// validate against all constraints
-				valid := true
-				if constraints != nil {
-					for k, v := range *constraints {
-						if !v.MatchString(attr[k]) {
-							valid = false
-						}
+// Read and parse a web page.
+func Read(page io.Reader) (*html.Node, error) {
+	top, err := html.Parse(page)
+	return top, err
+}
+
+func find(node *html.Node, tag string, constraints *Constraints, result *[]Tag) {
+	if node == nil {
+		return
+	}
+	if node.Type == html.ElementNode {
+		if node.Data == tag { // this is the tag we want
+			// capture all attributes
+			attr := make(Attributes)
+			for _, a := range node.Attr {
+				attr[a.Key] = a.Val
+			}
+			// validate against all constraints
+			valid := true
+			if constraints != nil {
+				for k, v := range *constraints {
+					if !v.MatchString(attr[k]) {
+						valid = false
 					}
 				}
-				if valid {
-					result = append(result, Tag{tag, attr})
-				}
+			}
+			if valid {
+				*result = append(*result, Tag{tag, attr, node})
 			}
 		}
 	}
+	// continue downwards and sideways
+	find(node.FirstChild, tag, constraints, result)
+	find(node.NextSibling, tag, constraints, result)
+}
+
+// Find all tags starting at the given node subject to the constraints.
+func Find(node *html.Node, tag string, constraints *Constraints) []Tag {
+	result := []Tag{}
+	find(node.FirstChild, tag, constraints, &result) // start right below the current node
 	return result
 }
